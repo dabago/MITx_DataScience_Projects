@@ -36,13 +36,40 @@ X = np.array([
 
 y = np.array([-1,1,1])
 
+X = np.array([
+    [-4,2],
+    [-2,1],
+    [-1,-1],
+    [2,2],
+    [1,-2],
 
-def perceptron_sgd(X, Y):
-    w = np.zeros(len(X[0]))
+
+
+])
+
+y = np.array([1,1,-1,-1,-1])
+
+X = X[::-5]
+y = y[::-5]
+
+
+
+
+
+# Xx = np.random.shuffle(X)
+
+print('This is X')
+print(X)
+print('.......')
+def perceptron_sgd(Xx, Y):
+    w = np.zeros(2)
     eta = 1
-    epochs = 20
+    epochs = 2
     # print(w)
-    c=0
+    # combination=[]
+    miss=[]
+    NotOK=0
+    OK = 0 
     for t in range(epochs):
 
         for i, x in enumerate(X):
@@ -51,25 +78,48 @@ def perceptron_sgd(X, Y):
             # print('This is x')
             # print(x)
             if (np.dot(X[i], w)*Y[i]) <= 0:
+                # print(np.dot(X[i+1], w)*Y[i+1])
+                print('+++')
+                # print('not ok')
+                print(X[i])
+                miss.append(X[i])
                 w = w + eta*X[i]*Y[i]
+                print('Nuevo W')
                 print(w)
-                c = c + 1
+                NotOK= NotOK + 1
+            else:
+                print('OK')
+                print(X[i])
+                OK = OK+1
                 
-                
-    print(c)
-    return w
+    print(NotOK)
+    print(OK)
+    # print(miss)
+    return w,miss
 
 w = perceptron_sgd(X,y)
 print(w)
 
 
-# for d, sample in enumerate(X):
-#     # Plot the negative samples
-#     if d < 2:
-#         plt.scatter(sample[0], sample[1], s=120, marker='_', linewidths=2)
-#     # Plot the positive samples
-#     else:
-#         plt.scatter(sample[0], sample[1], s=120, marker='+', linewidths=2)
 
-# # Print a possible hyperplane, that is seperating the two classes.
-# plt.plot([-2,6],[6,0.5])
+# This is X
+# [[ 1 -2]
+#  [-1 -1]
+#  [ 2  2]
+#  [-2  1]
+#  [-4  2]]
+# .......
+# [ 1. -2.]
+# 1
+# [ 1. -2.]
+#%%
+for d, sample in enumerate(X):
+    # Plot the negative samples
+    if d < 2:
+        plt.scatter(sample[0], sample[1], s=120, marker='_', linewidths=2)
+    # Plot the positive samples
+    else:
+        plt.scatter(sample[0], sample[1], s=120, marker='+', linewidths=2)
+
+# Print a possible hyperplane, that is seperating the two classes.
+plt.plot([-2,6],[6,0.5])
