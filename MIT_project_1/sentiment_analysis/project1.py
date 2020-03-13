@@ -36,8 +36,7 @@ def hinge_loss_single(feature_vector, label, theta, theta_0):
     Returns: A real number representing the hinge loss associated with the
     given data point and parameters.
     """
-    # Your code here
-    raise NotImplementedError
+    return max(0, 1 - label*(theta.T.dot(feature_vector) + theta_0))
 #pragma: coderesponse end
 
 
@@ -60,8 +59,11 @@ def hinge_loss_full(feature_matrix, labels, theta, theta_0):
     given dataset and parameters. This number should be the average hinge
     loss across all of the points in the feature matrix.
     """
-    # Your code here
-    raise NotImplementedError
+    # Compute hinge loss and compare with 0
+    h_loss = 1 - labels*(np.dot(theta, feature_matrix.T) + theta_0)
+    h_loss[h_loss < 0] = 0
+    
+    return h_loss.mean()
 #pragma: coderesponse end
 
 
@@ -88,8 +90,18 @@ def perceptron_single_step_update(
     real valued number with the value of theta_0 after the current updated has
     completed.
     """
-    # Your code here
-    raise NotImplementedError
+    
+    # Tolerance for floating point errors
+    eps = 1e-8
+    
+    agreement = float(label*(current_theta.dot(feature_vector) + current_theta_0))
+    
+    if abs(agreement) < eps or agreement < 0:   # 1st condition to check if = 0
+            current_theta = current_theta + label*feature_vector
+            current_theta_0 = current_theta_0 + label
+            
+    return (current_theta, current_theta_0)
+    
 #pragma: coderesponse end
 
 
@@ -119,12 +131,16 @@ def perceptron(feature_matrix, labels, T):
     theta_0, the offset classification parameter, after T iterations through
     the feature matrix.
     """
-    # Your code here
+    current_theta = np.zeros(feature_matrix.shape[1])
+    current_theta_0 = 0.0
+    
     for t in range(T):
         for i in get_order(feature_matrix.shape[0]):
-            # Your code here
-            pass
-    raise NotImplementedError
+            current_theta, current_theta_0 = \
+            perceptron_single_step_update(feature_matrix[i,:], labels[i], \
+                                          current_theta, current_theta_0)
+            
+    return (current_theta, current_theta_0)
 #pragma: coderesponse end
 
 
@@ -158,8 +174,28 @@ def average_perceptron(feature_matrix, labels, T):
     Hint: It is difficult to keep a running average; however, it is simple to
     find a sum and divide.
     """
-    # Your code here
-    raise NotImplementedError
+    current_theta = np.zeros(feature_matrix.shape[1])
+    current_theta_0 = 0.0
+    
+    # Keep track of the sum through the loops
+    theta_sum = np.zeros(feature_matrix.shape[1])
+    theta_0_sum = 0.0
+    
+    n = feature_matrix.shape[0]     # No of examples
+    
+    for t in range(T):
+        for i in get_order(feature_matrix.shape[0]):
+            current_theta, current_theta_0 = \
+            perceptron_single_step_update(feature_matrix[i,:], labels[i], \
+                                          current_theta, current_theta_0)
+            
+            theta_sum = theta_sum + current_theta
+            theta_0_sum = theta_0_sum + current_theta_0
+            
+    theta_avg = (1/(n*T))*theta_sum
+    theta_0_avg = (1/(n*T))*theta_0_sum
+    
+    return (theta_avg, theta_0_avg)
 #pragma: coderesponse end
 
 
@@ -190,8 +226,15 @@ def pegasos_single_step_update(
     real valued number with the value of theta_0 after the current updated has
     completed.
     """
-    # Your code here
-    raise NotImplementedError
+    agreement = float(label*(current_theta.dot(feature_vector) + current_theta_0))
+    
+    if agreement <= 1.0:
+        current_theta = (1-eta*L)*current_theta + eta*label*feature_vector
+        current_theta_0 = current_theta_0 + eta*label
+    else:
+        current_theta = (1-eta*L)*current_theta
+        
+    return (current_theta, current_theta_0)
 #pragma: coderesponse end
 
 
@@ -225,8 +268,24 @@ def pegasos(feature_matrix, labels, T, L):
     number with the value of the theta_0, the offset classification
     parameter, found after T iterations through the feature matrix.
     """
-    # Your code here
-    raise NotImplementedError
+    # Counter
+    c = 1
+    
+    # Initialize theta and theta0
+    current_theta = np.zeros(feature_matrix.shape[1])
+    current_theta_0 = 0.0
+    
+    for t in range(T):
+        for i in get_order(feature_matrix.shape[0]):
+            eta_t = 1/np.sqrt(c)  # Update eta every iteration
+            c += 1 # Update counter
+            
+            # Run pegasos algorithm to get theta and theta0
+            current_theta, current_theta_0 = pegasos_single_step_update(feature_matrix[i,:], \
+             labels[i], L, eta_t, current_theta, current_theta_0)
+            
+    return (current_theta, current_theta_0)
+            
 #pragma: coderesponse end
 
 # Part II
@@ -250,8 +309,16 @@ def classify(feature_matrix, theta, theta_0):
     given theta and theta_0. If a prediction is GREATER THAN zero, it should
     be considered a positive classification.
     """
-    # Your code here
-    raise NotImplementedError
+    # Tolerance
+    eps = 1e-8
+    
+    predictions = theta.dot(feature_matrix.T) + theta_0
+    predictions[predictions > 0.0] = 1
+    predictions[predictions < 0.0] = -1
+    predictions[abs(predictions) < eps] = -1
+    
+    return predictions
+    
 #pragma: coderesponse end
 
 
@@ -264,13 +331,13 @@ def classifier_accuracy(
         val_labels,
         **kwargs):
     """
-    Trains a linear classifier and computes accuracy.
-    The classifier is trained on the train data. The classifier's
+    Trains a linear classifier using the perceptron algorithm with a given T
+    value. The classifier is trained on the train data. The classifier's
     accuracy on the train and validation data is then returned.
 
     Args:
         classifier - A classifier function that takes arguments
-            (feature matrix, labels, **kwargs) and returns (theta, theta_0)
+            (feature matrix, labels, **kwargs)
         train_feature_matrix - A numpy matrix describing the training
             data. Each row represents a single data point.
         val_feature_matrix - A numpy matrix describing the training
@@ -288,8 +355,19 @@ def classifier_accuracy(
     trained classifier on the training data and the second element is the
     accuracy of the trained classifier on the validation data.
     """
-    # Your code here
-    raise NotImplementedError
+    # Train the algorithm to get theta, theta0
+    theta, theta_0 = classifier(train_feature_matrix, train_labels, **kwargs)
+    
+    # Use these parameters to get predictions for training and validation sets
+    pred_train = classify(train_feature_matrix, theta, theta_0)
+    pred_val = classify(val_feature_matrix, theta, theta_0)
+    
+    # Calculate classification accuracy by comparing predictions with labels
+    train_accuracy = accuracy(pred_train, train_labels)
+    val_accuracy = accuracy(pred_val, val_labels)
+    
+    return (train_accuracy, val_accuracy)
+    
 #pragma: coderesponse end
 
 
@@ -316,12 +394,16 @@ def bag_of_words(texts):
 
     Feel free to change this code as guided by Problem 9
     """
-    # Your code here
+    # Read stopwords.txt and save words from this file
+    with open("stopwords.txt",'r',encoding='utf8') as stoptext:
+        stop_words = stoptext.read()
+        stop_words = stop_words.replace("\n"," ").split()
+        
     dictionary = {} # maps word to unique index
     for text in texts:
         word_list = extract_words(text)
         for word in word_list:
-            if word not in dictionary:
+            if word not in dictionary and word not in stop_words:
                 dictionary[word] = len(dictionary)
     return dictionary
 #pragma: coderesponse end
@@ -338,7 +420,6 @@ def extract_bow_feature_vectors(reviews, dictionary):
 
     Feel free to change this code as guided by Problem 9
     """
-    # Your code here
 
     num_reviews = len(reviews)
     feature_matrix = np.zeros([num_reviews, len(dictionary)])
@@ -347,7 +428,7 @@ def extract_bow_feature_vectors(reviews, dictionary):
         word_list = extract_words(text)
         for word in word_list:
             if word in dictionary:
-                feature_matrix[i, dictionary[word]] = 1
+                feature_matrix[i, dictionary[word]] += 1    # Changed binary update to counts 
     return feature_matrix
 #pragma: coderesponse end
 
